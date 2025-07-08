@@ -1,0 +1,40 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.special import hermite
+
+
+class Plane:
+    def __init__(self, grid_shape, pixel_pitch, phase):
+        self.Ny, self.Nx = grid_shape
+        self.pixel_pitch = pixel_pitch
+        self.X, self.Y = self._make_grid()
+        self.phase = np.zeros((self.Ny, self.Nx)) if phase is None else phase
+
+    def _make_grid(self):
+        Lx = self.Nx * self.pixel_pitch
+        Ly = self.Ny * self.pixel_pitch
+        x = np.linspace(-Lx/2, Lx/2, self.Nx)
+        y = np.linspace(-Ly/2, Ly/2, self.Ny)
+        return np.meshgrid(x, y)
+
+    def visualize(self, scale_mm=True):
+        """Display the phase map of the plane."""
+        x_vals = self.X[0, :] * 1e3 if scale_mm else self.X[0, :]
+        y_vals = self.Y[:, 0] * 1e3 if scale_mm else self.Y[:, 0]
+        units = 'mm' if scale_mm else 'm'
+
+        wrapped_phase = np.mod(self.phase, 2 * np.pi)
+
+        plt.figure(figsize=(6, 5))
+        plt.imshow(wrapped_phase, cmap='twilight', extent=[
+            x_vals[0], x_vals[-1], y_vals[0], y_vals[-1]
+        ])
+        plt.title('Phase Mask φ(x, y)')
+        plt.xlabel(f'x [{units}]')
+        plt.ylabel(f'y [{units}]')
+        plt.colorbar(label='Phase [rad]')
+        plt.tight_layout()
+        plt.show()
+
+    def apply(self, mode, back = False):
+        mode.field = mode.field * np.exp(1j * self.phase) if back is False else mode.field * np.exp(-1j * self.phase)
