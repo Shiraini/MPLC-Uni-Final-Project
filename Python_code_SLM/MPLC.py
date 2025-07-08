@@ -35,48 +35,6 @@ class MPLCSystem:
             mode.propagate(-self.d)
         return field_after[::-1]  # Reverse to match forward order
 
-    def replace_phase(self, patient, donor):
-        """Replace the phase of 'patient' with the phase of 'donor'."""
-        amp = np.abs(patient.field)
-        phase = np.angle(donor.field)
-        patient.field = amp * np.exp(1j * phase)
-        return patient
-
-    def TG(self, inputs, targets, iterations=10):
-        for i in range(iterations):
-            self.train_plane(inputs, targets, i % len(self.planes))
-
-    def fwd_field_at_plane(self, input, plane):
-        d = self.d
-        input.propagate(d)  # first free space
-        for i in range(plane):
-            self.planes[i].apply(input)
-            input.propagate(d)
-        return input.field
-
-    def bwd_field_at_plane(self, target, plane):
-        d = self.d
-        target.propagate(-d)  # first free space
-        for i in reversed(range(plane + 1, len(self.planes))):
-            self.planes[i].apply(target, back=True)
-            target.propagate(-d)
-        self.planes[plane].apply(target, back=True)
-        return target.field
-
-    def train_plane(self, inputs, targets, plane_numer):
-        masks = []
-        # propagate fwd to plane
-        for input, target in zip(inputs, targets):
-            input_copy = copy.deepcopy(input)
-            target_copy = copy.deepcopy(target)
-            field_before = self.fwd_field_at_plane(input_copy, plane_numer)
-            field_after = self.bwd_field_at_plane(target_copy, plane_numer)
-            newphase = np.angle(field_before*np.conj(field_after)) ##maybe minus
-            masks.append(newphase)
-        phase = np.angle(np.sum(masks, axis=0))
-        self.planes[plane_numer].phase = np.mod(
-            self.planes[plane_numer].phase + self.lr * phase, 2 * np.pi
-        )
 
     def fit_fontaine(self, inputs, targets, iterations=10):
         """Run iterative optimization to find phase masks using the Fontaine algorithm."""
@@ -136,42 +94,6 @@ class MPLCSystem:
                 snapshots.append(segment)
 
         return snapshots if record else None
-
-    def pre_train(self, inputs, targets, plane_numer):
-        masks = []
-        # propagate fwd to plane
-        for input, target in zip(inputs, targets):
-            input_copy = copy.deepcopy(input)
-            target_copy = copy.deepcopy(target)
-            field_before = self.fwd_field_at_plane(input_copy, plane_numer)
-            field_after = self.bwd_field_at_plane(target_copy, plane_numer)
-            newphase = np.angle(field_before * np.conj(field_after))  ##maybe minus
-            masks.append(newphase)
-        phase = np.angle(np.sum(masks, axis=0))
-        self.planes[plane_numer].phase = phase
-
-    def pre_TG(self, inputs, targets):
-        for i in range(self.n_planes):
-            self.pre_train(inputs, targets, i)
-
-    def measure_losses(self, inputs, targets):
-        eta_list = []
-
-        for input_mode, target_mode in zip(inputs, targets):
-            input_copy = copy.deepcopy(input_mode)
-            target_copy = copy.deepcopy(target_mode)
-
-            self.sort(input_copy)  # applies propagation + masks
-            overlap = np.vdot(target_copy.field, input_copy.field)
-            eta = np.abs(overlap) ** 2
-            eta_list.append(eta)
-
-        eta_array = np.array(eta_list)
-
-        IL = -10 * np.log10(np.mean(eta_array))
-        MDL = 10 * np.log10(np.max(eta_array) / np.min(eta_array))
-
-        return IL, MDL, eta_array  # Return all for plotting etc.
 
     def compute_transfer_matrix(self, inputs, targets):
         N_in = len(inputs)
