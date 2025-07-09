@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import hermite
-
+import math
 
 class Mode:
     def __init__(self, m, n, grid_shape, pixel_pitch, w0, wavelength, center=(0, 0), absorber=None):
@@ -17,8 +17,14 @@ class Mode:
         self.absorber = absorber
         self.X, self.Y = self._make_grid()
         self.field = self._generate_field()
+        self.norm = np.sqrt(np.sum(abs(self.field)**2 * self.pixel_pitch**2))
+        self.field /= self.norm
         if self.absorber is not None:
             self.field *= self.absorber
+
+    @property
+    def power(self):
+        return np.sum(abs(self.field)**2 * self.pixel_pitch**2)
 
     def _make_grid(self):
             Lx = self.Nx * self.pixel_pitch

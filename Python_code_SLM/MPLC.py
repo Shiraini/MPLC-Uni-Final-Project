@@ -48,10 +48,6 @@ class MPLCSystem:
                 target_mode = copy.deepcopy(target_mode_orig)
                 # Forward propagation
                 fwd_fields = self.forward_propagate(input_mode)
-
-                # Phase transplant at output
-                #self.replace_phase(target_mode, input_mode)
-
                 # Backward propagation
                 bwd_fields = self.backward_propagate(target_mode)
 
@@ -64,8 +60,8 @@ class MPLCSystem:
 
             # Update phase masks
             for i, plane in enumerate(self.planes):
-                plane.phase = np.mod(
-                    plane.phase + self.lr * np.angle(total_inner[i]),
+                plane.phase = np.mod(plane.phase +
+                    self.lr * np.angle(total_inner[i]),
                     2 * np.pi
                 )
 

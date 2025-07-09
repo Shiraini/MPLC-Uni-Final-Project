@@ -5,6 +5,7 @@ import matplotlib.animation as animation
 import matplotlib.colors as mcolors
 
 
+pp = 8E-6
 def animate(
     snapshots,
     X,
@@ -30,7 +31,7 @@ def animate(
     extent = [x_vals[0], x_vals[-1], y_vals[0], y_vals[-1]]
 
     # ---------- choose scaling ----------
-    intensities = [np.abs(s) ** 2 for s in snapshots]
+    intensities = [np.abs(s) ** 2 * pp**2 for s in snapshots]
     launch_peak = np.max(intensities[0])
 
     if mode == "linear":
