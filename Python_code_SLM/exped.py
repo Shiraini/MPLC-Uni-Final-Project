@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from init import shape
 
 GRID   = shape[0]
-SIGMA  = 1             # Gaussian σ in pixels
+SIGMA  = 3             # Gaussian σ in pixels
 ERASE  = -1               # scale factor for right-click
 SAVE_FILE = "target.npy"
 def target():

@@ -35,7 +35,7 @@ def animate(
     launch_peak = np.max(intensities[0])
 
     if mode == "linear":
-        vmin_i, vmax_i = 0.0, np.max(intensities[-1])
+        vmin_i, vmax_i = 0.0, np.max(intensities[0])
 
         def norm_I(I):
             return I

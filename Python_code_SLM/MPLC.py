@@ -18,8 +18,8 @@ class MPLCSystem:
         field_before = []
         mode.propagate(self.d)
         for plane in self.planes:
-            field_before.append(mode.field.copy())
             plane.apply(mode)
+            field_before.append(mode.field.copy())
             mode.propagate(self.d)
         return field_before
 
@@ -30,8 +30,8 @@ class MPLCSystem:
         mode.propagate(-self.d)
         for plane in reversed(self.planes):
             #switch back to after applying
-            plane.apply(mode, back=True)
             field_after.append(mode.field.copy())
+            plane.apply(mode, back=True)
             mode.propagate(-self.d)
         return field_after[::-1]  # Reverse to match forward order
 

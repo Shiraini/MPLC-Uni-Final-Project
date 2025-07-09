@@ -12,8 +12,6 @@ from init import absorber,shape
 
 
 lr = 0.1
-dx = 1E-3
-dy = 0.5E-3
 d = 10E-2  # distance between planes
 win = 400E-6
 wout = 300E-6
@@ -24,7 +22,7 @@ planes = [Plane(shape, 8E-6, None) for _ in range(n_planes)]
 
 target()
 my_target_field = [np.load('target.npy')]
-my_target = [Mode(0, 0, shape, 8E-6, 1500E-6, 632E-9, (0, 0), absorber)]
+my_target = [Mode(0, 0, shape, 8E-6, 1000E-6, 632E-9, (0, 0), absorber)]
 my_target[0].field = my_target_field[0] * np.exp(1j * np.angle(my_target[0].field))
 input = [Mode(0, 0, shape, 8E-6, 1500E-6, 632E-9, (0, 0),absorber)]
 
