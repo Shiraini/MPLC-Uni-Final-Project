@@ -91,8 +91,9 @@ class Mode:
         # Free-space propagation over distance z using angular spectrum
         #move to angular spectrum
         pp = self.pixel_pitch * self.downsample
-        fx = np.fft.fftfreq(self.Nx, d=pp)  # [1/m]
-        fy = np.fft.fftfreq(self.Ny, d=pp)
+
+        fx = np.fft.fftfreq(len(self.X), d=pp)
+        fy = np.fft.fftfreq(len(self.Y), d=pp)
         FX, FY = np.meshgrid(fx, fy)
         spectra = np.fft.fft2(self.field)
 

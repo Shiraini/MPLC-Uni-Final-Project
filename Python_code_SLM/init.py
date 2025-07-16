@@ -11,9 +11,9 @@ import copy
 lr = 0.15
 dx = 0.5E-3
 dy = np.sqrt(3)/2 * dx
-d = 18E-2  # distance between planes
-Nx = 200
-Ny = 200
+d = 10E-2  # distance between planes
+Nx = 512
+Ny = 512
 win = 800E-6
 wout = 150E-6
 iter = 50
@@ -25,6 +25,8 @@ pad = 50
 shape = [Ny, Nx]
 wl = 632E-9
 pp = 8E-6 #pixel pitch
+file_name = 'MPLC_ds_2planes'
+downsample = 4
 
 def raised_cosine_absorber(shape, pad, width):
     Ny, Nx = shape
@@ -93,4 +95,3 @@ super_field = np.sum([mode.field for mode in inputs_super], axis=0)
 supermode = copy.deepcopy(HG10)
 supermode.field = super_field
 
-target11.visualize()

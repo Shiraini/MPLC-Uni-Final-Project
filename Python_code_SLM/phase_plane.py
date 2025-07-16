@@ -9,7 +9,7 @@ class Plane:
         self.pixel_pitch = pixel_pitch
         self.downsample = downsample
         self.X, self.Y = self._make_grid()
-        self.phase = np.zeros((self.Ny, self.Nx)) if phase is None else phase
+        self.phase = np.zeros((len(self.Y), len(self.X))) if phase is None else phase
 
     def _make_grid(self):
         Lx = self.Nx * self.pixel_pitch
