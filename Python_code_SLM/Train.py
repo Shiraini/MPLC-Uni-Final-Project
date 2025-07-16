@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # animate(snapshots, HG11.X, HG11.Y, save_as='HG10 sort MPLCv10.mp4')
 
 
-    with open("MPLCv13", "wb") as f:
+    with open(file_name, "wb") as f:
         pickle.dump(MPLC, f)
 
 
