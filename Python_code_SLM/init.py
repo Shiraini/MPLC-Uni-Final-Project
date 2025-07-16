@@ -11,17 +11,17 @@ import copy
 lr = 0.15
 dx = 0.5E-3
 dy = np.sqrt(3)/2 * dx
-d = 7E-2  # distance between planes
-Nx = 540
-Ny = 900
-win = 400E-6
-wout = 60E-6
+d = 18E-2  # distance between planes
+Nx = 200
+Ny = 200
+win = 800E-6
+wout = 150E-6
 iter = 50
-n_planes = 3
+n_planes = 2
 width = 50
 pad = 50
-Nx += 2*pad
-Ny += 2*pad
+# Nx += 2*pad
+# Ny += 2*pad
 shape = [Ny, Nx]
 wl = 632E-9
 pp = 8E-6 #pixel pitch
@@ -54,14 +54,15 @@ def raised_cosine_absorber(shape, pad, width):
     absorber[dark_zone] = 0.0
 
     return absorber
-absorber = raised_cosine_absorber((Ny, Nx), pad, width)
+# absorber = raised_cosine_absorber((Ny, Nx), pad, width)
+absorber = None
 
 
 target00 = Mode(0, 0, shape, pp, wout, wl, (dx, dx), absorber)
 target10 = Mode(0, 0, shape, pp, wout, wl, (0, dx), absorber)
 target01 = Mode(0, 0, shape, pp, wout, wl, (dx, 0), absorber)
-target20 = Mode(0, 0, shape, pp, wout, wl, (-dx, dx), absorber)
 target11 = Mode(0, 0, shape, pp, wout, wl, (0, 0), absorber)
+target20 = Mode(0, 0, shape, pp, wout, wl, (-dx, dx), absorber)
 target02 = Mode(0, 0, shape, pp, wout, wl, (dx, -dx), absorber)
 target21 = Mode(0, 0, shape, pp, wout, wl, (-dx, 0), absorber)
 target12 = Mode(0, 0, shape, pp, wout, wl, (0, -dx), absorber)
@@ -71,20 +72,19 @@ target22 = Mode(0, 0, shape, pp, wout, wl, (-dx, -dx), absorber)
 HG00 = Mode(0, 0, shape, pp, win, wl, (0, 0), absorber)
 HG10 = Mode(1, 0, shape, pp, win, wl, (0, 0), absorber)
 HG01 = Mode(0, 1, shape, pp, win, wl, (0, 0), absorber)
-HG20 = Mode(2, 0, shape, pp, win, wl, (0, 0), absorber)
 HG11 = Mode(1, 1, shape, pp, win, wl, (0, 0), absorber)
+HG20 = Mode(2, 0, shape, pp, win, wl, (0, 0), absorber)
 HG02 = Mode(0, 2, shape, pp, win, wl, (0, 0), absorber)
 HG21 = Mode(2, 1, shape, pp, win, wl, (0, 0), absorber)
 HG12 = Mode(1, 2, shape, pp, win, wl, (0, 0), absorber)
 HG22 = Mode(2, 2, shape, pp, win, wl, (0, 0), absorber)
-
 supertarget = copy.deepcopy(target00)
 supertarget.field += copy.deepcopy(target01.field) + copy.deepcopy(target10.field) + copy.deepcopy(target02.field) + copy.deepcopy(target20.field) + copy.deepcopy(target11.field)
 
 planes = [Plane(shape, pp, None) for _ in range(n_planes)]
 
-targets = [target00, target10, target01, target20, target11, target02, target21, target12, target22]
-inputs = [HG00, HG10, HG01, HG20, HG11, HG02, HG21, HG12, HG22]
+targets = [target00, target10, target01, target11, target20, target02, target21, target12, target22]
+inputs = [HG00, HG10, HG01, HG11, HG20, HG02, HG21, HG12, HG22]
 
 inputs_super = copy.deepcopy(inputs)
 
@@ -93,5 +93,4 @@ super_field = np.sum([mode.field for mode in inputs_super], axis=0)
 supermode = copy.deepcopy(HG10)
 supermode.field = super_field
 
-
-
+target11.visualize()

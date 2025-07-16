@@ -3,8 +3,9 @@ import numpy as np
 from scipy.special import hermite
 import math
 
+
 class Mode:
-    def __init__(self, m, n, grid_shape, pixel_pitch, w0, wavelength, center=(0, 0), absorber=None):
+    def __init__(self, m, n, grid_shape, pixel_pitch, w0, wavelength, center=(0, 0), absorber=None, downsample=4):
         self.m = m
         self.n = n
         self.Ny, self.Nx = grid_shape
@@ -15,10 +16,12 @@ class Mode:
         self.z = 0
         self.center = center
         self.absorber = absorber
+        self.downsample = downsample
         self.X, self.Y = self._make_grid()
         self.field = self._generate_field()
         self.norm = np.sqrt(np.sum(abs(self.field)**2 * self.pixel_pitch**2))
         self.field /= self.norm
+
         if self.absorber is not None:
             self.field *= self.absorber
 
@@ -29,9 +32,10 @@ class Mode:
     def _make_grid(self):
             Lx = self.Nx * self.pixel_pitch
             Ly = self.Ny * self.pixel_pitch
-            x = np.linspace(-Lx/2, Lx/2, self.Nx)
-            y = np.linspace(-Ly/2, Ly/2, self.Ny)
-            return np.meshgrid(x, y)
+            x = np.linspace(-Lx/2, Lx/2, self.Nx)[::self.downsample]
+            y = np.linspace(-Ly/2, Ly/2, self.Ny)[::self.downsample]
+            X, Y = np.meshgrid(x, y)
+            return X, Y
 
 
     def _generate_field(self):
@@ -70,7 +74,7 @@ class Mode:
         plt.colorbar(label='Intensity')
         plt.tight_layout()
 
-        # # Phase plot
+        # Phase plot
         # plt.figure(figsize=(6, 5))
         # plt.imshow(np.angle(self.field), cmap='twilight', extent=[
         #     x_vals[0], x_vals[-1], y_vals[0], y_vals[-1]
@@ -86,8 +90,9 @@ class Mode:
     def propagate(self, z):
         # Free-space propagation over distance z using angular spectrum
         #move to angular spectrum
-        fx = np.fft.fftfreq(self.Nx, d=self.pixel_pitch)  # [1/m]
-        fy = np.fft.fftfreq(self.Ny, d=self.pixel_pitch)
+        pp = self.pixel_pitch * self.downsample
+        fx = np.fft.fftfreq(self.Nx, d=pp)  # [1/m]
+        fy = np.fft.fftfreq(self.Ny, d=pp)
         FX, FY = np.meshgrid(fx, fy)
         spectra = np.fft.fft2(self.field)
 

@@ -4,18 +4,20 @@ from scipy.special import hermite
 
 
 class Plane:
-    def __init__(self, grid_shape, pixel_pitch, phase):
+    def __init__(self, grid_shape, pixel_pitch, phase, downsample=4):
         self.Ny, self.Nx = grid_shape
         self.pixel_pitch = pixel_pitch
+        self.downsample = downsample
         self.X, self.Y = self._make_grid()
         self.phase = np.zeros((self.Ny, self.Nx)) if phase is None else phase
 
     def _make_grid(self):
         Lx = self.Nx * self.pixel_pitch
         Ly = self.Ny * self.pixel_pitch
-        x = np.linspace(-Lx/2, Lx/2, self.Nx)
-        y = np.linspace(-Ly/2, Ly/2, self.Ny)
-        return np.meshgrid(x, y)
+        x = np.linspace(-Lx/2, Lx/2, self.Nx)[::self.downsample]
+        y = np.linspace(-Ly/2, Ly/2, self.Ny)[::self.downsample]
+        mesh = np.meshgrid(x, y)
+        return mesh
 
     def visualize(self, scale_mm=True):
         """Display the phase map of the plane."""
