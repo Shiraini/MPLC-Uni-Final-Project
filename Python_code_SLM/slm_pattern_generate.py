@@ -42,7 +42,6 @@ for i, plane in enumerate(system.planes):
 # === Combine Horizontally for SLM display ===
 # Creates zero-padding (gaps) between phase masks for SLM layout calibration
 def conc(x1, x2, ps=316):
-    print(f"{x1}-{ps} + 960={(x1-ps + 960)}")
     gap1 = np.zeros((ps*2, x1-ps + 960))
     gap2 = np.zeros((ps * 2, (x2 - ps) - (x1 + ps)))
     gap3 = np.zeros((ps * 2, 960 - (x2 + ps)))

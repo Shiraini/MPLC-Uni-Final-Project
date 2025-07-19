@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.special import hermite
 
 
 class Plane:
     def __init__(self, grid_shape, pixel_pitch, phase, downsample=4):
+        # Initialize plane with shape, pixel size, phase mask, and downsampling
         self.Ny, self.Nx = grid_shape
         self.pixel_pitch = pixel_pitch
         self.downsample = downsample
@@ -12,6 +12,7 @@ class Plane:
         self.phase = np.zeros((len(self.Y), len(self.X))) if phase is None else phase
 
     def _make_grid(self):
+        # Create 2D coordinate grid (centered, downsampled)
         Lx = self.Nx * self.pixel_pitch
         Ly = self.Ny * self.pixel_pitch
         x = np.linspace(-Lx/2, Lx/2, self.Nx)[::self.downsample]
@@ -20,7 +21,7 @@ class Plane:
         return mesh
 
     def visualize(self, scale_mm=True):
-        """Display the phase map of the plane."""
+        # Plot the wrapped phase map
         x_vals = self.X[0, :] * 1e3 if scale_mm else self.X[0, :]
         y_vals = self.Y[:, 0] * 1e3 if scale_mm else self.Y[:, 0]
         units = 'mm' if scale_mm else 'm'
@@ -38,5 +39,6 @@ class Plane:
         plt.tight_layout()
         plt.show()
 
-    def apply(self, mode, back = False):
+    def apply(self, mode, back=False):
+        # Apply (or reverse) the phase mask to a mode
         mode.field = mode.field * np.exp(1j * self.phase) if back is False else mode.field * np.exp(-1j * self.phase)

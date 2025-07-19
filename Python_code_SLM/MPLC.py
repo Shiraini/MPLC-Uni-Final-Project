@@ -2,8 +2,8 @@ import numpy as np
 import copy
 import matplotlib.pyplot as plt
 
-class MPLCSystem:
 
+class MPLCSystem:
 
     def __init__(self, planes, d, lr):
         self.planes = planes
@@ -23,18 +23,15 @@ class MPLCSystem:
             mode.propagate(self.d)
         return field_before
 
-
     def backward_propagate(self, mode):
         """Propagate a mode backward through all planes, storing fields after each inverse mask."""
         field_after = []
         mode.propagate(-self.d)
         for plane in reversed(self.planes):
-            #switch back to after applying
             field_after.append(mode.field.copy())
             plane.apply(mode, back=True)
             mode.propagate(-self.d)
         return field_after[::-1]  # Reverse to match forward order
-
 
     def fit_fontaine(self, inputs, targets, iterations=10):
         """Run iterative optimization to find phase masks using the Fontaine algorithm."""
@@ -60,13 +57,10 @@ class MPLCSystem:
 
             # Update phase masks
             for i, plane in enumerate(self.planes):
-                plane.phase = np.mod(plane.phase +
-                    self.lr * np.angle(total_inner[i]),
-                    2 * np.pi
-                )
-
+                plane.phase = np.mod(plane.phase + self.lr * np.angle(total_inner[i]), 2 * np.pi)
 
     def sort(self, mode, record=False, steps_per_propagation=12):
+        """Propagate a mode through MPLC and optionally record intermediate steps."""
         d = self.d
         snapshots = []
 
@@ -92,6 +86,7 @@ class MPLCSystem:
         return snapshots if record else None
 
     def compute_transfer_matrix(self, inputs, targets):
+        """Compute T: the complex overlap matrix between MPLC outputs and target modes."""
         N_in = len(inputs)
         N_out = len(targets)
         T = np.zeros((N_out, N_in), dtype=complex)
@@ -113,6 +108,7 @@ class MPLCSystem:
         self.T = T
 
     def compute_IL_MDL_from_T(self):
+        """Calculate Insertion Loss (IL) and Mode-Dependent Loss (MDL) from T."""
         if self.T is None:
             print('Error! please compute T')
         else:
@@ -123,9 +119,8 @@ class MPLCSystem:
 
         return IL, MDL
 
-    import matplotlib.pyplot as plt
-
     def visualize_crosstalk_matrix(self, input_labels=None, target_labels=None, title="Crosstalk Matrix"):
+        """Plot the power coupling matrix |T|^2."""
         T = self.T
         power_matrix = np.abs(T) ** 2
 

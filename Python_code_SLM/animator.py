@@ -1,15 +1,14 @@
-# animator.py  – replace / extend your current animate function
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.colors as mcolors
 
+pp = 8E-6  # pixel pitch [m]
 
-pp = 8E-6
+
 def animate(
-    snapshots,
-    X,
-    Y,
+    snapshots,            # list of 2D complex field frames
+    X, Y,                 # coordinate grids
     mode="linear",        # "linear" | "clip" | "dB"
     clip_percent=99.0,    # used if mode == "clip"
     vmin_db=-40,          # used if mode == "dB"
@@ -36,7 +35,6 @@ def animate(
 
     if mode == "linear":
         vmin_i, vmax_i = 0.0, np.max(intensities[0])
-
         def norm_I(I):
             return I
 
@@ -48,7 +46,6 @@ def animate(
         flat = np.concatenate([I.ravel() for I in intensities])
         vmax_i = np.percentile(flat, clip_percent)
         vmin_i = 0.0
-
         def norm_I(I):
             return I
 
@@ -59,7 +56,6 @@ def animate(
     elif mode == "dB":
         def to_db(I):
             return 10 * np.log10(I / launch_peak + 1e-12)
-
         def norm_I(I):
             return to_db(I)
 
