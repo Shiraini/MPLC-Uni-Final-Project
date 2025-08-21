@@ -1,9 +1,9 @@
 from processing_functions import *
 
 # full-scale, 16-bit or 8-bit grayscale files
-paths = dict(HG00='../lab_results/2planes_3modes/HG00.jpg',
-             HG10='../lab_results/2planes_3modes/HG10.jpg',
-             HG01='../lab_results/2planes_3modes/HG01.jpg')
+paths = dict(HG00='../lab_results/2planes_4modes/non-filtered/HG00.jpg',
+             HG10='../lab_results/2planes_4modes/non-filtered/HG10.jpg',
+             HG01='../lab_results/2planes_4modes/non-filtered/HG01.jpg')
 
 # (x, y) pixel coordinates of the three output ports on the sensor
 centres = {}
@@ -18,7 +18,7 @@ r_px = r_px/3               # aperture radius (adjust once)
 # print(f"r_px={r_px}")
 
 powers = []                          # rows: input modes   cols: outputs
-for key in ['HG00', 'HG01', 'HG10']:  # <- order = rows
+for key in ['HG00', 'HG10', 'HG01']:  # <- order = rows
     raw = cv2.imread(paths[key], cv2.IMREAD_GRAYSCALE).astype(float)
     raw -= raw.min()                 # crude dark subtraction if needed
     row = [integrate(raw, *c, r_px) for c in list(centres.values())]
@@ -28,7 +28,7 @@ P = np.array(powers)
 T = P / P.sum(axis=1, keepdims=True)      # each row sums to 1
 XT_dB = 10*np.log10(T)                    # convenient dB view
 
-labels = ['00', '01', '10']              # mode labels for both axes
+labels = ['00', '10', '01']              # mode labels for both axes
 
 fig, ax = plt.subplots(figsize=(4,4))
 im = ax.imshow(XT_dB, vmin=-40, vmax=0)  # default colour-map
@@ -52,7 +52,7 @@ print(f'Insertion loss ≃ {insertion_loss_dB:5.2f} dB')
 print(f'Mode-dependent loss (MDL) ≃ {mdl_dB:4.1f} dB')
 
 # The function isn't working correct right now
-detect_sorted_mode_from_map('../lab_results/2planes_3modes/HG10.jpg', centres)
+detect_sorted_mode_from_map('../lab_results/2planes_3modes/non-filtered/HG10.jpg', centres)
 """Add a function that it's input is an image with the gaussian beam. 
 the purpose of the function is to recognize which mode was sorted, 
 print it and plot the same image with a circle around the relevant gaussian beam"""

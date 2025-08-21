@@ -5,7 +5,9 @@ if __name__ == "__main__":
     MPLC = MPLCSystem(planes, d, lr)
     print('Commence Training...')
     # Train MPLC using Fontaine-style wavefront matching
-    MPLC.fit_fontaine(inputs[:3], targets[:3], iter)
+    # MPLC.fit_fontaine(in_list, tar_list, iter)
+    # MPLC.fit_fontaine(inputs[:4], targets[:4], iter)
+    MPLC.fit_fontaine([inputs[3]], [targets[3]], iter)
     print('Training Completed!')
 
     # snapshots = MPLC.sort(test11, True, 100)

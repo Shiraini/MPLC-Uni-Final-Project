@@ -13,19 +13,23 @@ downsample = 8
 lr = 0.15                           # learning rate
 dx = 0.5E-3                         # x-shift for target modes
 dy = np.sqrt(3)/2 * dx              # y-shift for target modes
-d = 10E-2                           # distance between planes
-Nx = 512
-Ny = 512
-win = 800E-6                        # input beam waist
+# d = [0E-2, 11.0E-2, 60.0E-2]        # distance between planes
+d = [0E-2, 53.4E-2]
+# 43.3, 10.4
+# d = 6.3E-2
+Nx = 256
+Ny = 256
+win = 1000E-6                        # input beam waist
 wout = 150E-6                       # output beam waist
 iter = 50                           # number of training iterations
-n_planes = 2                        # number of phase planes
+n_planes = 1                     # number of phase planes
 width = 50
 pad = 50
 shape = [Ny, Nx]
 wl = 632E-9                         # wavelength [m]
-pp = 8E-6                           # pixel pitch
-file_name = f"MPLC_ds={downsample}_{n_planes}planes_d={d}"
+pp = 7.5E-6 #-5.3 approx                           # pixel pitch
+file_name = f"MPLC_{n_planes}MFD={win}_pp={pp}_d={d}_HG11"
+
 
 
 # === Optional Absorber Function ===
@@ -93,4 +97,7 @@ inputs_super = copy.deepcopy(inputs)
 super_field = np.sum([mode.field for mode in inputs_super], axis=0)
 supermode = copy.deepcopy(HG10)
 supermode.field = super_field
+
+in_list = [HG10, HG01, HG20, HG02]
+tar_list = [target10, target01, target20, target02]
 
