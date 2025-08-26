@@ -1,15 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from init import downsample, file_name, n_planes
+from init import downsample, file_name, n_planes, d, shape, pp, win, wl, absorber_test
 from scipy.ndimage import zoom, rotate
 from PIL import Image
-
+from mode import HGMode, LGMode
 
 # === Load Trained MPLC ===
 with open(file_name, "rb") as f:
     system = pickle.load(f)
 print("Loaded trained MPLC system")
+
 
 # === Display Downsampled Masks ===
 mask_before_upsampling = []
@@ -38,6 +39,21 @@ for i, plane in enumerate(system.planes):
     # normalise to 0–1 for 8-bit output
     norm_phase = (phi_up % (2*np.pi)) / (2*np.pi)
     normalized_masks.append(norm_phase)
+
+
+def create_phase_grating(size=512, max_gray=255, period=16):
+
+    # Create coordinate grid
+    x = np.arange(size)
+    # Generate sinusoidal grating (values between -1 and 1)
+    grating = np.sin(2 * np.pi * x / period)
+    # Normalize to 0...max_gray
+    grating = (grating - grating.min()) / (grating.max() - grating.min()) * max_gray
+    # Repeat pattern in 2D
+    phase_grating = np.tile(grating, (size, 1))
+
+    return phase_grating.astype(np.uint8)
+
 
 # def flip(x):
 #     return np.fliplr(x)
@@ -109,31 +125,40 @@ def create_combined_mask_xy(normalized_masks, centers_xy, canvas_w=1920, canvas_
 
     return combined
 
-# if(n_planes > 1):
-#     positions = [(5,1), (671,-13),(-692,-33)]
-#     # normalized_masks[1] = np.fliplr(normalized_masks[1])
-#     combined_mask = create_combined_mask_xy(normalized_masks, positions)
-#     # combined_mask = create_combined_mask(normalized_masks, positions, total_width=1920)
-# else:
-#     combined_mask = normalized_masks[0]
-#     # combined_mask = flip(normalized_masks[0])
-positions = [-823 , 774]
-combined_mask = create_combined_mask(normalized_masks, positions)
+def show(system, m=0, n=0, n_planes=1, d=None):
+    for i in range(n_planes):
+        system.planes[i].phase = normalized_masks[i]
 
-# === Combine Horizontally for SLM display ===
-# Creates zero-padding (gaps) between phase masks for SLM layout calibration
-# def conc(x1, x2, ps=316):
-#     gap1 = np.zeros((ps*2, x1-ps + 960))
-#     gap2 = np.zeros((ps * 2, (x2 - ps) - (x1 + ps)))
-#     gap3 = np.zeros((ps * 2, 960 - (x2 + ps)))
-#     return gap1, gap2, gap3
-#
-# if(n_planes == 3):
-#     # x1, x2: manual calibration values based on optical alignment or pixel measurements
-#     gap1, gap2, gap3 = conc(-500, 479, int((normalized_masks[0].shape[0])/2))
-#     combined_mask = np.concatenate([gap1, normalized_masks[0], gap2, normalized_masks[1], gap3], axis=1)
-# else:
-#     combined_mask = normalized_masks[0]
+    mymode = HGMode(m, n, shape, pp, win, wl, (0, 0), absorber_test, 1)
+    for i, dis in enumerate(d):
+        # mymode.visualize()
+        mymode.propagate(dis)
+        if i != len(d)-1:
+            system.planes[i].apply(mymode)
+    mymode.visualize()
+# show(system, m=0, n=0, n_planes=n_planes, d=d)
+# show(system, m=1, n=0, n_planes=n_planes, d=d)
+# show(system, m=0, n=1, n_planes=n_planes, d=d)
+# show(system, m=1, n=1, n_planes=n_planes, d=d)
+my = LGMode(3, 0, shape, pp, win, wl, (0, 0), absorber_test, 1)
+my.visualize()
+
+
+
+# positions = [-786 , 810]
+# positions = [-778]
+# positions = [(-634,65)]
+# positions = [(702,75)]
+positions = [(-634,65), (702,75)]
+
+combined_mask = create_combined_mask_xy(normalized_masks, positions)
+# grating = create_phase_grating()
+
+# combined_mask = create_combined_mask(grating, positions)
+
+# combined_mask = create_combined_mask(normalized_masks, positions)
+
+
 
 # Display the final SLM-compatible layout
 plt.figure(figsize=(12, 5))
@@ -143,13 +168,10 @@ plt.axis('off')
 plt.show()
 
 # === Save Image for SLM Upload ===
-Image.fromarray((combined_mask * 255).astype(np.uint8)).save(f"{file_name}.png")
+Image.fromarray((combined_mask * 209).astype(np.uint8)).save(f"{file_name}.png")
 print("Saved: 3_planes_combined.png")
 
-# if(n_planes == 1):
-#     rotated_images = generate_rotated_images(combined_mask, -5, 5, 1)
-#     for angle in rotated_images.keys():
-#         rotated_images[angle] = np.squeeze(rotated_images[angle])
-#         Image.fromarray((rotated_images[angle] * 255).astype(np.uint8)).save(f"{angle}.png")
-#         print("Saved: 3_planes_combined.png")
+
+
+
 

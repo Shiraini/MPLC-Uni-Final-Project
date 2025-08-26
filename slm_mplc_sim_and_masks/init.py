@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import hermite
-from mode import Mode
+from mode import HGMode, LGMode
 from phase_plane import Plane
 from MPLC import MPLCSystem
 from animator import animate
@@ -9,26 +9,26 @@ import pickle
 import copy
 
 # === Simulation Parameters ===
-downsample = 8
-lr = 0.15                           # learning rate
+downsample = 4
+lr = 0.002                           # learning rate 0.0005
 dx = 0.5E-3                         # x-shift for target modes
 dy = np.sqrt(3)/2 * dx              # y-shift for target modes
-# d = [0E-2, 11.0E-2, 60.0E-2]        # distance between planes
-d = [0E-2, 53.4E-2]
-# 43.3, 10.4
-# d = 6.3E-2
-Nx = 256
-Ny = 256
-win = 1000E-6                        # input beam waist
-wout = 150E-6                       # output beam waist
+# d = [0E-2, 17.4E-2]        # distance between planes
+# d = [0E-2, 9E-2]        # distance between planes
+# d = [0E-2, 8.4E-2, 9E-2]
+d = [0E-2, 84E-3,84E-3, 9E-2] # distance between planes
+Nx = 512
+Ny = 512
+win = 450E-6                        # input beam waist
+wout = 60E-6                       # output beam waist
 iter = 50                           # number of training iterations
-n_planes = 1                     # number of phase planes
-width = 50
+n_planes = 3                    # number of phase planes
+width = 150
 pad = 50
 shape = [Ny, Nx]
 wl = 632E-9                         # wavelength [m]
-pp = 7.5E-6 #-5.3 approx                           # pixel pitch
-file_name = f"MPLC_{n_planes}MFD={win}_pp={pp}_d={d}_HG11"
+pp = 7.5E-6                        # pixel pitch
+file_name = f"MPLC_{n_planes}_3modes"
 
 
 
@@ -57,29 +57,41 @@ def raised_cosine_absorber(shape, pad, width):
 
 
 absorber = raised_cosine_absorber((Ny/downsample, Nx/downsample), pad/downsample, width/downsample)
+absorber_test = raised_cosine_absorber((Ny, Nx), pad, width)
 # absorber = None
 
 # === Define Target Modes (spatially shifted Gaussians) ===
-target00 = Mode(0, 0, shape, pp, wout, wl, (dx, dx), absorber, downsample)
-target10 = Mode(0, 0, shape, pp, wout, wl, (0, dx), absorber, downsample)
-target01 = Mode(0, 0, shape, pp, wout, wl, (dx, 0), absorber, downsample)
-target11 = Mode(0, 0, shape, pp, wout, wl, (0, 0), absorber, downsample)
-target20 = Mode(0, 0, shape, pp, wout, wl, (-dx, dx), absorber, downsample)
-target02 = Mode(0, 0, shape, pp, wout, wl, (dx, -dx), absorber, downsample)
-target21 = Mode(0, 0, shape, pp, wout, wl, (-dx, 0), absorber, downsample)
-target12 = Mode(0, 0, shape, pp, wout, wl, (0, -dx), absorber, downsample)
-target22 = Mode(0, 0, shape, pp, wout, wl, (-dx, -dx), absorber, downsample)
+target00 = HGMode(0, 0, shape, pp, wout, wl, (0, 0), absorber, downsample)
+target10 = HGMode(0, 0, shape, pp, wout, wl, (dx, 0), absorber, downsample)
+target01 = HGMode(0, 0, shape, pp, wout, wl, (0, dx), absorber, downsample)
+target11 = HGMode(0, 0, shape, pp, wout, wl, (dx, dx), absorber, downsample)
+target20 = HGMode(0, 0, shape, pp, wout, wl, (2*dx, 0), absorber, downsample)
+target02 = HGMode(0, 0, shape, pp, wout, wl, (0, 2*dx), absorber, downsample)
+target21 = HGMode(0, 0, shape, pp, wout, wl, (2*dx, dx), absorber, downsample)
+target12 = HGMode(0, 0, shape, pp, wout, wl, (dx, 2*dx), absorber, downsample)
+target22 = HGMode(0, 0, shape, pp, wout, wl, (2*dx, 2*dx), absorber, downsample)
+
 
 # === Define Input HG Modes ===
-HG00 = Mode(0, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG10 = Mode(1, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG01 = Mode(0, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG11 = Mode(1, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG20 = Mode(2, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG02 = Mode(0, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG21 = Mode(2, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG12 = Mode(1, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
-HG22 = Mode(2, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG00 = HGMode(0, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG10 = HGMode(1, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG01 = HGMode(0, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG11 = HGMode(1, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG20 = HGMode(2, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG02 = HGMode(0, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG21 = HGMode(2, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG12 = HGMode(1, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
+HG22 = HGMode(2, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
+
+LG00 = LGMode(0, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG1_1 = LGMode(1, -1, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG10 = LGMode(1, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG11 = LGMode(1, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG2_2 = LGMode(2, -2, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG2_1 = LGMode(2, -1, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG20 = LGMode(2, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG21 = LGMode(2, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG22 = LGMode(2, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
 
 # === Create Superposition Target ===
 supertarget = copy.deepcopy(target00)
@@ -90,10 +102,11 @@ planes = [Plane(shape, pp, None, downsample) for _ in range(n_planes)]
 
 # === Prepare Inputs and Targets ===
 targets = [target00, target10, target01, target11, target20, target02, target21, target12, target22]
-inputs = [HG00, HG10, HG01, HG11, HG20, HG02, HG21, HG12, HG22]
+HGinputs = [HG00, HG10, HG01, HG11, HG20, HG02, HG21, HG12, HG22]
+LGinputs = [LG00, LG1_1, LG10, LG11, LG2_2, LG2_1, LG20, LG21, LG22]
 
 # === Create Superposition Mode ===
-inputs_super = copy.deepcopy(inputs)
+inputs_super = copy.deepcopy(HGinputs)
 super_field = np.sum([mode.field for mode in inputs_super], axis=0)
 supermode = copy.deepcopy(HG10)
 supermode.field = super_field
