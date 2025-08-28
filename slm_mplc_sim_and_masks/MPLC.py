@@ -87,7 +87,11 @@ class MPLCSystem:
 
     # --- training / metrics (unchanged) ---
     def fit_fontaine(self, inputs, targets, iterations=10):
+        lr = self.lr
+        lam = 1
+
         for _ in range(iterations):
+            lr = lr * lam**iterations
             masks = []
             inputs = inputs.copy()
             targets = targets.copy()
@@ -104,7 +108,7 @@ class MPLCSystem:
 
             total_inner = np.sum(masks, axis=0)
             for i, plane in enumerate(self.planes):
-                plane.phase = np.mod(plane.phase + self.lr * np.angle(total_inner[i]), 2*np.pi)
+                plane.phase = np.mod(plane.phase + lr * np.angle(total_inner[i]), 2*np.pi)
 
     def compute_transfer_matrix(self, inputs, targets):
         N_in = len(inputs); N_out = len(targets)

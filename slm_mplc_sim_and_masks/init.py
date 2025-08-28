@@ -13,12 +13,12 @@ downsample = 4
 lr = 0.002                           # learning rate 0.0005
 dx = 0.5E-3                         # x-shift for target modes
 dy = np.sqrt(3)/2 * dx              # y-shift for target modes
-# d = [0E-2, 17.4E-2]        # distance between planes
-# d = [0E-2, 9E-2]        # distance between planes
-# d = [0E-2, 8.4E-2, 9E-2]
-d = [0E-2, 84E-3,84E-3, 9E-2] # distance between planes
-Nx = 512
-Ny = 512
+# d = [0E-2, 8.4E-2, 8.5E-2]  # distance between planes
+d = [0E-2, 4.1E-2, 4.1E-2, 8E-2] # distance between planes
+# Nx = 512  # 2 planes
+# Ny = 512  # 2 planes
+Nx = 400  # 3 planes
+Ny = 400  # 3 planes
 win = 450E-6                        # input beam waist
 wout = 60E-6                       # output beam waist
 iter = 50                           # number of training iterations
@@ -28,7 +28,7 @@ pad = 50
 shape = [Ny, Nx]
 wl = 632E-9                         # wavelength [m]
 pp = 7.5E-6                        # pixel pitch
-file_name = f"MPLC_{n_planes}_3modes"
+file_name = f"MPLC_{n_planes}_half_good_modes"
 
 
 
@@ -58,18 +58,16 @@ def raised_cosine_absorber(shape, pad, width):
 
 absorber = raised_cosine_absorber((Ny/downsample, Nx/downsample), pad/downsample, width/downsample)
 absorber_test = raised_cosine_absorber((Ny, Nx), pad, width)
-# absorber = None
 
-# === Define Target Modes (spatially shifted Gaussians) ===
-target00 = HGMode(0, 0, shape, pp, wout, wl, (0, 0), absorber, downsample)
-target10 = HGMode(0, 0, shape, pp, wout, wl, (dx, 0), absorber, downsample)
-target01 = HGMode(0, 0, shape, pp, wout, wl, (0, dx), absorber, downsample)
-target11 = HGMode(0, 0, shape, pp, wout, wl, (dx, dx), absorber, downsample)
-target20 = HGMode(0, 0, shape, pp, wout, wl, (2*dx, 0), absorber, downsample)
-target02 = HGMode(0, 0, shape, pp, wout, wl, (0, 2*dx), absorber, downsample)
-target21 = HGMode(0, 0, shape, pp, wout, wl, (2*dx, dx), absorber, downsample)
-target12 = HGMode(0, 0, shape, pp, wout, wl, (dx, 2*dx), absorber, downsample)
-target22 = HGMode(0, 0, shape, pp, wout, wl, (2*dx, 2*dx), absorber, downsample)
+target00 = HGMode(0, 0, shape, pp, wout, wl, (-dx, -dx), absorber, downsample)
+target10 = HGMode(0, 0, shape, pp, wout, wl, (-dx, 0), absorber, downsample)
+target01 = HGMode(0, 0, shape, pp, wout, wl, (0, -dx), absorber, downsample)
+target11 = HGMode(0, 0, shape, pp, wout, wl, (0, 0), absorber, downsample)
+target20 = HGMode(0, 0, shape, pp, wout, wl, (-dx, dx), absorber, downsample)
+target02 = HGMode(0, 0, shape, pp, wout, wl, (dx, -dx), absorber, downsample)
+target21 = HGMode(0, 0, shape, pp, wout, wl, (0, dx), absorber, downsample)
+target12 = HGMode(0, 0, shape, pp, wout, wl, (dx, 0), absorber, downsample)
+target22 = HGMode(0, 0, shape, pp, wout, wl, (dx, dx), absorber, downsample)
 
 
 # === Define Input HG Modes ===
@@ -89,7 +87,7 @@ LG10 = LGMode(1, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
 LG11 = LGMode(1, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
 LG2_2 = LGMode(2, -2, shape, pp, win, wl, (0, 0), absorber, downsample)
 LG2_1 = LGMode(2, -1, shape, pp, win, wl, (0, 0), absorber, downsample)
-LG20 = LGMode(2, 0, shape, pp, win, wl, (0, 0), absorber, downsample)
+LG20 = LGMode(2, 0, shape, pp, 465E-6, wl, (0, 0), absorber, downsample)
 LG21 = LGMode(2, 1, shape, pp, win, wl, (0, 0), absorber, downsample)
 LG22 = LGMode(2, 2, shape, pp, win, wl, (0, 0), absorber, downsample)
 
@@ -110,7 +108,3 @@ inputs_super = copy.deepcopy(HGinputs)
 super_field = np.sum([mode.field for mode in inputs_super], axis=0)
 supermode = copy.deepcopy(HG10)
 supermode.field = super_field
-
-in_list = [HG10, HG01, HG20, HG02]
-tar_list = [target10, target01, target20, target02]
-

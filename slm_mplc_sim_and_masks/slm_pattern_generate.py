@@ -16,7 +16,7 @@ print("Loaded trained MPLC system")
 mask_before_upsampling = []
 for i, plane in enumerate(system.planes):
     phase = plane.phase  # shape: (Ny, Nx)
-    norm_phase = (np.mod(phase, 2 * np.pi)) / (2 * np.pi)  # Normalize to [0,1]
+    norm_phase = phase / (2 * np.pi)  # Normalize to [0,1]
     mask_before_upsampling.append(norm_phase)
 combined_mask = np.concatenate(mask_before_upsampling, axis=1)
 plt.figure(figsize=(12, 5))
@@ -31,40 +31,16 @@ normalized_masks = []
 for i, plane in enumerate(system.planes):
     phasor = np.exp(1j * plane.phase)
     # interpolate real & imag separately
-    re_up = zoom(phasor.real, downsample, order=3, mode='wrap')
-    im_up = zoom(phasor.imag, downsample, order=3, mode='wrap')
+    re_up = zoom(phasor.real, downsample, order=3, mode='nearest')
+    im_up = zoom(phasor.imag, downsample, order=3, mode='nearest')
     phasor_up = re_up + 1j*im_up
     # back to phase in radians
     phi_up = np.angle(phasor_up)
+    phi_up = (phi_up + np.max(np.abs(phi_up))) / (2 * np.max(np.abs(phi_up))) * 2 * np.pi
     # normalise to 0–1 for 8-bit output
-    norm_phase = (phi_up % (2*np.pi)) / (2*np.pi)
+    norm_phase = ((phi_up + 2 * np.pi) % (2*np.pi)) / (2*np.pi)
     normalized_masks.append(norm_phase)
 
-
-def create_phase_grating(size=512, max_gray=255, period=16):
-
-    # Create coordinate grid
-    x = np.arange(size)
-    # Generate sinusoidal grating (values between -1 and 1)
-    grating = np.sin(2 * np.pi * x / period)
-    # Normalize to 0...max_gray
-    grating = (grating - grating.min()) / (grating.max() - grating.min()) * max_gray
-    # Repeat pattern in 2D
-    phase_grating = np.tile(grating, (size, 1))
-
-    return phase_grating.astype(np.uint8)
-
-
-# def flip(x):
-#     return np.fliplr(x)
-#
-# def generate_rotated_images(image, start_angle=-45, end_angle=45, step=5):
-#     rotated_images = {}
-#     for angle in range(start_angle, end_angle + 1, step):
-#         rotated = rotate(image, angle, reshape=False, order=3, mode='wrap', prefilter=True)
-#         rotated = np.clip(rotated, 0, 1)
-#         rotated_images[angle] = rotated
-#     return rotated_images
 
 def create_combined_mask(normalized_masks, positions, total_width=1920):
     # Assume all masks are same height and width
@@ -127,7 +103,7 @@ def create_combined_mask_xy(normalized_masks, centers_xy, canvas_w=1920, canvas_
 
 def show(system, m=0, n=0, n_planes=1, d=None):
     for i in range(n_planes):
-        system.planes[i].phase = normalized_masks[i]
+        system.planes[i].phase = normalized_masks[i] * (2*np.pi)
 
     mymode = HGMode(m, n, shape, pp, win, wl, (0, 0), absorber_test, 1)
     for i, dis in enumerate(d):
@@ -136,29 +112,22 @@ def show(system, m=0, n=0, n_planes=1, d=None):
         if i != len(d)-1:
             system.planes[i].apply(mymode)
     mymode.visualize()
-# show(system, m=0, n=0, n_planes=n_planes, d=d)
-# show(system, m=1, n=0, n_planes=n_planes, d=d)
-# show(system, m=0, n=1, n_planes=n_planes, d=d)
-# show(system, m=1, n=1, n_planes=n_planes, d=d)
-my = LGMode(3, 0, shape, pp, win, wl, (0, 0), absorber_test, 1)
-my.visualize()
+show(system, m=0, n=0, n_planes=n_planes, d=d)
+show(system, m=1, n=0, n_planes=n_planes, d=d)
+show(system, m=0, n=1, n_planes=n_planes, d=d)
+show(system, m=1, n=1, n_planes=n_planes, d=d)
+show(system, m=2, n=0, n_planes=n_planes, d=d)
+show(system, m=0, n=2, n_planes=n_planes, d=d)
+show(system, m=2, n=1, n_planes=n_planes, d=d)
+show(system, m=1, n=2, n_planes=n_planes, d=d)
+show(system, m=2, n=2, n_planes=n_planes, d=d)
 
+# my = LGMode(2, 0, shape, pp, win, wl, (0, 0), absorber_test, 1)
+# my.visualize()
 
-
-# positions = [-786 , 810]
-# positions = [-778]
-# positions = [(-634,65)]
-# positions = [(702,75)]
-positions = [(-634,65), (702,75)]
-
+# positions = [(-668,79), (644,95)]  # worked for 2 planes
+positions = [(-760,104), (175,106), (757, 115)]
 combined_mask = create_combined_mask_xy(normalized_masks, positions)
-# grating = create_phase_grating()
-
-# combined_mask = create_combined_mask(grating, positions)
-
-# combined_mask = create_combined_mask(normalized_masks, positions)
-
-
 
 # Display the final SLM-compatible layout
 plt.figure(figsize=(12, 5))
@@ -168,7 +137,7 @@ plt.axis('off')
 plt.show()
 
 # === Save Image for SLM Upload ===
-Image.fromarray((combined_mask * 209).astype(np.uint8)).save(f"{file_name}.png")
+Image.fromarray((combined_mask * 255).astype(np.uint8)).save(f"{file_name}.png")
 print("Saved: 3_planes_combined.png")
 
 
