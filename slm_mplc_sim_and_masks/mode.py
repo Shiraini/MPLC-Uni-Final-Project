@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import envelope
 from scipy.special import hermite, eval_genlaguerre
 
 
