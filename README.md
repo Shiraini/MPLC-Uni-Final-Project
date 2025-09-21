@@ -10,6 +10,8 @@ The platform consists of:
 
 1. **Simulation Pipeline**: Python-based framework to train phase masks via wavefront matching and simulate how HG modes propagate through them.
 2. **Experimental Tools**: Scripts for generating upsampled SLM patterns for lab use.
+3. **Processing Framework**: Functions and scripts to analyze experimental measurements, build transfer matrices, and compute metrics (IL, MDL, crosstalk).
+
 
 The design is inspired by:
 
@@ -75,6 +77,28 @@ This script:
 * Combines the masks horizontally.
 * Saves the result as an 8-bit grayscale image ready for SLM upload.
 
+## Processing Experimental Results
+
+In addition to training and simulation, the repository provides tools for analyzing **experimental measurements**.
+
+### 1. Processing Functions
+
+The `processing_functions` module includes reusable utilities to:
+
+* Load and normalize experimental images.  
+* Detect Gaussian spots in the output plane.  
+* Construct the transfer matrix **T** from measured input–output mode mappings.  
+* Compute system metrics such as **IL**, **MDL**, and crosstalk.  
+
+These functions act as the building blocks for all analysis.
+
+### 2. Processing Results Script
+
+To process experimental data, configure the input/output paths and run:
+
+```bash
+python processing_results.py
+
 ---
 
 ## File Structure
@@ -89,6 +113,8 @@ This script:
 | `phase_plane.py`          | Defines a phase mask and how it affects a mode                 |
 | `MPLC.py`                 | Core class for MPLC propagation, training, and evaluation      |
 | `animator.py`             | Utility for creating intensity and phase animations            |
+| `processing_functions.py` | Utility functions for loading data, detecting spots, and computing metrics (IL, MDL, crosstalk) |
+| `processing_results.py`   | Main script to analyze experimental results and export figures|
 
 ---
 
