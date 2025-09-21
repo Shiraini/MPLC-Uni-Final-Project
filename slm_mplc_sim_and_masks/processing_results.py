@@ -1,58 +1,69 @@
+# ===== processing_results.py =====
 from processing_functions import *
+import numpy as np
+import matplotlib.pyplot as plt
+import itertools
 
-# full-scale, 16-bit or 8-bit grayscale files
-paths = dict(HG00='../lab_results/2planes_4modes/non-filtered/HG00.jpg',
-             HG10='../lab_results/2planes_4modes/non-filtered/HG10.jpg',
-             HG01='../lab_results/2planes_4modes/non-filtered/HG01.jpg')
+INPUT_DIR  = '../lab_results/28.8/3planes4modes/inputs'
+OUTPUT_DIR = '../lab_results/28.8/3planes4modes/non-filtered'
+MODES = ['HG10','HG01','HG11','HG22']  # Used modes
 
-# (x, y) pixel coordinates of the three output ports on the sensor
+# Dict with moeds as keys and paths as values
+out_paths = {m: first_existing(OUTPUT_DIR, m) for m in MODES}
+in_paths  = {m: first_existing(INPUT_DIR,  m) for m in MODES}
+
+
 centres = {}
-r_px = 0
-for HG in list(paths.keys()):
-    cx, cy, r = find_gaussian_spot(paths[HG])
-    centres[HG] = (cx, cy)
-    # print(f"HG={HG}, (cx,cy)=({cx}, {cy})")
-    r_px += r
+r_accum = 0
+for m in MODES:
+    cx, cy, r = find_gaussian_spot(out_paths[m])
+    centres[m] = (cx, cy)
+    r_accum += r
+r_px = max(3, int(round(r_accum / len(MODES))))
 
-r_px = r_px/3               # aperture radius (adjust once)
-# print(f"r_px={r_px}")
-
-powers = []                          # rows: input modes   cols: outputs
-for key in ['HG00', 'HG10', 'HG01']:  # <- order = rows
-    raw = cv2.imread(paths[key], cv2.IMREAD_GRAYSCALE).astype(float)
-    raw -= raw.min()                 # crude dark subtraction if needed
-    row = [integrate(raw, *c, r_px) for c in list(centres.values())]
+powers = []
+centre_list = list(centres.values())
+for m in MODES:
+    img = load_gray_norm(out_paths[m])
+    row = [integrate(img, cx, cy, r_px) for (cx, cy) in centre_list]
     powers.append(row)
-P = np.array(powers)
+P = np.array(powers, dtype=float)
 
-T = P / P.sum(axis=1, keepdims=True)      # each row sums to 1
-XT_dB = 10*np.log10(T)                    # convenient dB view
+row_sums = P.sum(axis=1, keepdims=True) + 1e-12
+T = P / row_sums
 
-labels = ['00', '10', '01']              # mode labels for both axes
+best_perm, best_score = None, -1
+for perm in itertools.permutations(range(len(MODES))):
+    score = T[range(len(MODES)), perm].sum()
+    if score > best_score:
+        best_score, best_perm = score, perm
 
+T = T[:, best_perm]
+P = P[:, best_perm]
+col_labels = [MODES[j] for j in best_perm]
+
+XT_dB = 10*np.log10(np.clip(T, 1e-6, 1.0))
 fig, ax = plt.subplots(figsize=(4,4))
-im = ax.imshow(XT_dB, vmin=-40, vmax=0)  # default colour-map
-ax.set_xticks(range(3))
-ax.set_xticklabels(labels)
-ax.set_yticks(range(3))
-ax.set_yticklabels(labels)
-
-ax.set_xlabel('Detected output mode')
-ax.set_ylabel('Injected input mode')
+im = ax.imshow(XT_dB, vmin=-40, vmax=0, cmap='viridis')
+ax.set_xticks(range(4)); ax.set_xticklabels(col_labels)
+ax.set_yticks(range(4)); ax.set_yticklabels(MODES)
+ax.set_xlabel('Detected output (auto-mapped)')
+ax.set_ylabel('Injected input')
 fig.colorbar(im, label='Power [dB]')
 plt.title('Crosstalk matrix (dB)')
-plt.tight_layout()
-plt.show()
+plt.tight_layout(); plt.show()
 
-insertion_loss_dB = -10*np.log10(P.sum()/cv2.imread(paths['HG00'],
-                                     cv2.IMREAD_GRAYSCALE).astype(float).sum())
-mdl_dB = 10*np.log10(np.max(np.linalg.svd(T, compute_uv=False)) /
-                     np.min(np.linalg.svd(T, compute_uv=False)))
-print(f'Insertion loss ≃ {insertion_loss_dB:5.2f} dB')
-print(f'Mode-dependent loss (MDL) ≃ {mdl_dB:4.1f} dB')
+svals = np.linalg.svd(T, compute_uv=False)
+mdl_dB = 10*np.log10(np.max(svals)/np.min(svals))
+print(f"Mode-dependent loss (MDL) ≃ {mdl_dB:4.2f} dB")
 
-# The function isn't working correct right now
-detect_sorted_mode_from_map('../lab_results/2planes_3modes/non-filtered/HG10.jpg', centres)
-"""Add a function that it's input is an image with the gaussian beam. 
-the purpose of the function is to recognize which mode was sorted, 
-print it and plot the same image with a circle around the relevant gaussian beam"""
+
+
+
+for i, m in enumerate(MODES):
+    Ein  = sum_energy(in_paths[m])
+    Eout = P[i, :].sum()
+    ILm  = -10*np.log10((Eout+1e-12)/(Ein+1e-12))
+    print(f"IL[{m}] ≃ {ILm:.2f} dB")
+
+print(f"Average IL ≃ {np.mean([-10*np.log10((P[i,:].sum()+1e-12)/(sum_energy(in_paths[m])+1e-12)) for i,m in enumerate(MODES)]):.2f} dB")
