@@ -7,12 +7,8 @@ import os
 import glob
 
 
-#Images path and initiallization
+# Find first file in folder starting with given name
 def first_existing(root, stem):
-    """
-    searches a given folder for the first file whose name starts with a given stem and returns its path,
-    checking common image extensions
-    """
     for ext in ('*.png', '*.jpg', '*.jpeg', '*.tif', '*.bmp'):
         cand = sorted(glob.glob(os.path.join(root, f"{stem}*{ext}")))
         if cand:
@@ -20,10 +16,8 @@ def first_existing(root, stem):
     raise FileNotFoundError(f"No image for {stem} under {root}")
 
 
+# Load grayscale image, subtract background, normalize to [0,1]
 def load_gray_norm(path, bg_percentile=5):
-    """
-    Loads an image in grayscale, subtracts low-percentile background, and normalizes pixel values to [0,1].
-    """
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         raise FileNotFoundError(path)
@@ -36,13 +30,14 @@ def load_gray_norm(path, bg_percentile=5):
     return img
 
 
-# Gaussian fits for finiding the location of the outputs modes
+# 2D Gaussian model function
 def gaussian_2d(coords, x0, y0, sigma_x, sigma_y, A, offset):
     x, y = coords
     return A * np.exp(-(((x - x0) ** 2) / (2 * sigma_x ** 2) +
                         ((y - y0) ** 2) / (2 * sigma_y ** 2))) + offset
 
 
+# Locate Gaussian spot center and radius in image
 def find_gaussian_spot(image_path):
     # Load and normalize image
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE).astype(float)
@@ -77,11 +72,13 @@ def find_gaussian_spot(image_path):
         return None
 
 
+# Sum pixel values inside a circular region
 def integrate(img, cx, cy, r):
     y,x = np.ogrid[:img.shape[0], :img.shape[1]]
     mask = (x-cx)**2 + (y-cy)**2 <= r**2
     return img[mask].sum()
 
 
+# Return total normalized energy of image
 def sum_energy(path):
     return load_gray_norm(path).sum()
