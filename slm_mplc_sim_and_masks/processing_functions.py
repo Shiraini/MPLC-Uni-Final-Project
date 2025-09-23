@@ -118,8 +118,8 @@ def load_gray_norm(path, bg_percentile=5):
 
 def compute_crosstalk_matrix(out_paths, MODES, centre_list, radius_px, SAVE_DIR):
     powers = []
-    # r_px = radius_px / 3
-    r_px = radius_px
+    r_px = radius_px * 1 / 3.6
+    # r_px = radius_px
     for m in MODES:
         img = load_gray_norm(out_paths[m])
         row = [integrate_circle(img, cx, cy, r_px) for (cx, cy) in centre_list]
