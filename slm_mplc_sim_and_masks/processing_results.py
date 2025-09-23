@@ -1,68 +1,121 @@
 # ===== processing_results.py =====
-from processing_functions import *
+# Computes ports, absolute power matrix P, crosstalk T, IL, MDL,
+# and saves annotated output images with four port circles.
+
+import os, itertools
 import numpy as np
 import matplotlib.pyplot as plt
-import itertools
+import cv2
 
-INPUT_DIR = '../lab_results/28.8/3planes4modes/inputs'
-OUTPUT_DIR = '../lab_results/28.8/3planes4modes/non-filtered'
-MODES = ['HG10','HG01','HG11','HG22']  # Used modes
+from processing_functions import (
+    first_existing, load_gray_linear, find_gaussian_spot,
+    integrate_circle, draw_ports_bgr, compute_crosstalk_matrix
+)
 
-# Dictionaries mapping each mode to its image file path
+# ---------------- User paths & settings ----------------
+INPUT_DIR  = 'lab_results/28.8/2planes4modes/inputs'        # camera frames of injected modes (pre-sorter), same exposure
+OUTPUT_DIR = 'lab_results/28.8/2planes4modes/non-filtered'  # camera frames at the output plane, same exposure
+SAVE_DIR   = './annotated_outputs'                          # where annotated images will be saved
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+MODES = ['HG10', 'HG01', 'HG11', 'HG22']       # ordering of injected inputs and desired ports
+DARK_PATH = None                               # e.g. '../lab_results/dark.tif' if you have it
+EXPOSURE_SCALE = 1.0                           # keep 1.0 if all images share the same exposure/gain
+
+# ------------------------------------------------------
+# Load optional dark frame
+DARK = None
+if DARK_PATH and os.path.isfile(DARK_PATH):
+    d = cv2.imread(DARK_PATH, cv2.IMREAD_GRAYSCALE)
+    if d is not None:
+        DARK = d.astype(np.float64)
+
+# Map mode -> image path
 out_paths = {m: first_existing(OUTPUT_DIR, m) for m in MODES}
-in_paths = {m: first_existing(INPUT_DIR,  m) for m in MODES}
+in_paths  = {m: first_existing(INPUT_DIR,  m) for m in MODES}
 
-# Spot centers and average radius for all modes
-centres = {}
-r_accum = 0
+# ---------- 1) Detect ports (centers) and a common radius ----------
+centers = []
+r_list  = []
 for m in MODES:
-    cx, cy, r = find_gaussian_spot(out_paths[m])
-    centres[m] = (cx, cy)
-    r_accum += r
-r_px = max(3, int(round(r_accum / len(MODES))))
+    img = load_gray_linear(out_paths[m], dark=DARK, exposure_scale=EXPOSURE_SCALE)
+    cx, cy, r = find_gaussian_spot(img)
+    centers.append((cx, cy))
+    r_list.append(r)
 
-powers = []
-centre_list = list(centres.values())
-for m in MODES:
-    img = load_gray_norm(out_paths[m])
-    row = [integrate(img, cx, cy, r_px) for (cx, cy) in centre_list]
-    powers.append(row)
-P = np.array(powers, dtype=float)  # Raw power matrix: input modes × detected ports
+# Use a conservative common radius (median) across modes
+r_px = int(max(4, np.median(r_list)))
 
-row_sums = P.sum(axis=1, keepdims=True) + 1e-12
-T = P / row_sums  # Normalized transfer matrix (rows sum to 1)
+# ---------- 2) Build absolute power matrix P (inputs × ports) ----------
+# P[i, j] = power recorded in port j when input i is launched
+P = np.zeros((len(MODES), len(MODES)), dtype=np.float64)
+for i, m in enumerate(MODES):
+    img = load_gray_linear(out_paths[m], dark=DARK, exposure_scale=EXPOSURE_SCALE)
+    P[i, :] = [integrate_circle(img, cx, cy, r_px) for (cx, cy) in centers]
 
-# Best column permutation to maximize diagonal sum
-best_perm, best_score = None, -1
+# ---------- 3) Permute columns to maximize diagonal (assign ports) ----------
+# This associates each column (physical port) with a logical mode label
+best_perm, best_score = None, -1.0
 for perm in itertools.permutations(range(len(MODES))):
-    score = T[range(len(MODES)), perm].sum()
+    score = P[range(len(MODES)), perm].sum()
     if score > best_score:
         best_score, best_perm = score, perm
 
-T = T[:, best_perm]
 P = P[:, best_perm]
-col_labels = [MODES[j] for j in best_perm]
+col_labels = [MODES[j] for j in best_perm]  # logical labels of ports after permutation
 
-XT_dB = 10*np.log10(np.clip(T, 1e-6, 1.0))  # Crosstalk matrix in dB
-fig, ax = plt.subplots(figsize=(4,4))
-im = ax.imshow(XT_dB, vmin=-40, vmax=0, cmap='viridis')
-ax.set_xticks(range(4)); ax.set_xticklabels(col_labels)
-ax.set_yticks(range(4)); ax.set_yticklabels(MODES)
-ax.set_xlabel('Detected output')
-ax.set_ylabel('Injected input')
-fig.colorbar(im, label='Power [dB]')
-plt.title('Crosstalk matrix (dB)')
-plt.tight_layout(); plt.show()
+# ---------- 4) Crosstalk matrix T (row-normalized), and dB heatmap ----------
+row_sums = P.sum(axis=1, keepdims=True) + 1e-12
+T = P / row_sums
 
-svals = np.linalg.svd(T, compute_uv=False)
-mdl_dB = 10*np.log10(np.max(svals)/np.min(svals))  # Compute mode-dependent loss
-print(f"Mode-dependent loss (MDL) ≃ {mdl_dB:4.2f} dB")
 
-# Calculate insertion loss per mode from input vs. output energy
+compute_crosstalk_matrix(out_paths, MODES, centers, r_px, SAVE_DIR)
+
+# ---------- 5) IL (per mode & average) from absolute energies ----------
+# Input energies measured from "input images" (same units/exposure)
+Ein = np.array([load_gray_linear(in_paths[m], dark=DARK, exposure_scale=EXPOSURE_SCALE).sum()
+                for m in MODES])
+Tout = P.sum(axis=1)
+
+gains = (Tout + 1e-12) / (Ein + 1e-12)                   # modal power transmission factors
+IL_per_mode_dB = -10.0 * np.log10(gains)                 # IL_i in dB (loss is positive)
+IL_avg_dB       = IL_per_mode_dB.mean()
+MDL_dB          = 10.0 * np.log10(gains.max() / gains.min())  # power-based MDL
+
+print("\n=== Performance metrics ===")
+for m, ILdB, g in zip(MODES, IL_per_mode_dB, gains):
+    print(f"IL[{m}] = {ILdB:5.2f} dB   (transmission = {100*g:5.2f}%)")
+print(f"Average IL = {IL_avg_dB:5.2f} dB")
+print(f"MDL        = {MDL_dB:5.2f} dB  (based on modal power gains)")
+
+# ---------- 6) Leakage per input (off-diagonal fraction) ----------
+diag_idx = np.argmax(T, axis=1)
+print("\n=== Leakage per input (fraction of total for that input) ===")
 for i, m in enumerate(MODES):
-    Ein  = sum_energy(in_paths[m])
-    Eout = P[i, :].sum()
-    ILm  = -10*np.log10((Eout+1e-12)/(Ein+1e-12))
-    print(f"IL[{m}] ≃ {ILm:.2f} dB")
+    good = T[i, diag_idx[i]]
+    leak = 1.0 - good
+    print(f"{m}: desired port = {col_labels[diag_idx[i]]:>4s}, good = {good:0.3f}, leakage = {leak:0.3f}")
 
-print(f"Average IL ≃ {np.mean([-10*np.log10((P[i,:].sum()+1e-12)/(sum_energy(in_paths[m])+1e-12)) for i,m in enumerate(MODES)]):.2f} dB")
+# ---------- 7) Save annotated output images with four port circles ----------
+# Use *original* geometric centers (before permutation) for drawing, since those are physical port locations.
+# But also save a legend mapping physical port -> logical label.
+legend_txt = os.path.join(SAVE_DIR, 'port_mapping.txt')
+with open(legend_txt, 'w') as f:
+    f.write("Physical port index -> Logical label (after permutation)\n")
+    for k, j in enumerate(best_perm):
+        f.write(f"Port {k}: {MODES[j]}\n")
+
+# Draw circles at physical centers
+for m in MODES:
+    img = load_gray_linear(out_paths[m], dark=DARK, exposure_scale=EXPOSURE_SCALE)
+    vis = draw_ports_bgr(img, centers, r_px, thickness=2)
+    base = os.path.basename(out_paths[m])
+    out_path = os.path.join(SAVE_DIR, f"annotated_{m}_{base}")
+    cv2.imwrite(out_path, vis)
+    # Also show interactively
+    cv2.imshow('annotated', vis)
+    cv2.waitKey(300)  # brief flash so you can see them
+cv2.destroyAllWindows()
+
+print(f"\nSaved annotated images and crosstalk heatmap to: {os.path.abspath(SAVE_DIR)}")
+print(f"Port mapping legend: {legend_txt}")
