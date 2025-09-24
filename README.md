@@ -4,7 +4,7 @@ This repository contains the simulation and experimental framework for designing
 
 ## Overview
 
-The goal of this project is to develop and test a compact MPLC system capable of cleanly sorting 3–6 HG modes with low insertion loss (IL) and mode-dependent loss (MDL), using as few SLM reflections as possible.
+The goal of this project is to develop and test a compact MPLC system capable of cleanly sorting 4 HG modes with low insertion loss (IL) and mode-dependent loss (MDL), using as few SLM reflections as possible.
 
 The platform consists of:
 
@@ -85,7 +85,7 @@ In addition to training and simulation, the repository provides tools for analyz
 
 The `processing_functions` module includes reusable utilities to:
 
-* Load and normalize experimental images.  
+* Load experimental images.  
 * Detect Gaussian spots in the output plane.  
 * Construct the transfer matrix **T** from measured input–output mode mappings.  
 * Compute system metrics such as **IL**, **MDL**, and crosstalk.  
