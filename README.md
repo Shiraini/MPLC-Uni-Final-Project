@@ -77,6 +77,8 @@ This script:
 * Combines the masks horizontally.
 * Saves the result as an 8-bit grayscale image ready for SLM upload.
 
+Use `positions` to define the mask locations on the SLM (i.e., specify the centres you chose for each mask, either for your setup or to simplify calibration). 
+
 ## Processing Experimental Results
 
 In addition to training and simulation, the repository provides tools for analyzing **experimental measurements**.
